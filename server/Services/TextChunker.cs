@@ -1,4 +1,7 @@
 ﻿
+using System.Text;
+using System.Text.RegularExpressions;
+
 using AskTheDocs.Api.Models;
 
 namespace AskTheDocs.Services;
@@ -9,25 +12,92 @@ public class TextChunker
         List<ExtractedPage> lstPages,
         int intChunkSize = 1000)
     {
+        if (intChunkSize < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(intChunkSize),
+                "Chunk size must be positive.");
+        }
+
         var lstChunks = new List<TextChunk>();
 
         foreach (var objPage in lstPages)
         {
-            for (int intStart = 0; intStart < objPage.Text.Length; intStart += intChunkSize)
+            var arrParagraphs = Regex.Split(
+                objPage.Text.Trim(),
+                @"(?:\r?\n\s*){2,}");
+
+            var strBuilderCurrentChunk = new StringBuilder();
+
+            foreach (var strParagraph in arrParagraphs)
             {
-                var intLength = Math.Min(
-                    intChunkSize,
-                    objPage.Text.Length - intStart);
+                // Join lines that were wrapped by PDF extraction.
+                string srtCleanedParagraph = Regex.Replace(
+                    strParagraph,
+                    @"\s*\r?\n\s*",
+                    " ").Trim();
 
-                var strText = objPage.Text.Substring(intStart, intLength);
+                if (srtCleanedParagraph.Length == 0)
+                    continue;
 
-                lstChunks.Add(new TextChunk(
-                    objPage.PageNumber,
-                    strText));
+                string[] arrSentences = Regex.Split(
+                    srtCleanedParagraph,
+                    @"(?<=[.!?])\s+");
+
+                foreach (string strSentence in arrSentences)
+                {
+                    string strText = strSentence.Trim();
+
+                    if (strText.Length == 0)
+                        continue;
+
+                    // A single sentence is too long for one chunk expand chunk size.  Do not split mid sentence.
+
+                    string strSeparator = strBuilderCurrentChunk.Length == 0
+                        ? ""
+                        : arrSentences[0] == strSentence
+                            ? Environment.NewLine + Environment.NewLine
+                            : " ";
+
+                    // Start a new chunk if adding this complete sentence exceeds the target size.
+                    if (strBuilderCurrentChunk.Length > 0 &&
+                        strBuilderCurrentChunk.Length + strSeparator.Length +
+                        strText.Length > intChunkSize)
+                    {
+                        FlushChunk(
+                            lstChunks,
+                            strBuilderCurrentChunk,
+                            objPage.PageNumber);
+
+                        strSeparator = "";
+                    }
+
+                    if (strBuilderCurrentChunk.Length > 0)
+                        strBuilderCurrentChunk.Append(strSeparator);
+
+                    strBuilderCurrentChunk.Append(strText);
+                }
             }
+
+            FlushChunk(lstChunks, strBuilderCurrentChunk, objPage.PageNumber);
         }
 
         return lstChunks;
+    }
+
+    private static void FlushChunk(
+        List<TextChunk> lstChunks,
+        StringBuilder strBuilderCurrentChunk,
+        int intPageNumber)
+    {
+        if (strBuilderCurrentChunk.Length == 0)
+            return;
+
+        lstChunks.Add(new TextChunk(
+            intPageNumber,
+            strBuilderCurrentChunk.ToString().Trim()));
+
+        strBuilderCurrentChunk.Clear();
     }
 }
 
