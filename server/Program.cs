@@ -9,6 +9,7 @@ builder.Services.AddSwaggerGen();
 
 // Depende
 builder.Services.AddSingleton<PdfTextExtractor>();
+builder.Services.AddSingleton<TextChunker>();
 
 var app = builder.Build();
 
@@ -47,5 +48,62 @@ app.MapGet("/api/documents/sample/text", (
 
     return Results.Ok(new { text });
 });
+
+
+app.MapGet("/api/documents/sample/textPages", (
+    PdfTextExtractor objExtractor,
+    IWebHostEnvironment environment) =>
+{
+    var strFilePath = Path.Combine(
+        environment.ContentRootPath,
+        "DocumentsToRead",
+        "pip2-form-and-information-booklet.pdf");
+
+    if (!File.Exists(strFilePath))
+    {
+        return Results.NotFound("Sample PDF not found.");
+    }
+
+
+    var listPages = objExtractor.ExtractPages(strFilePath);
+
+    return Results.Ok(new
+    {
+        pageCount = listPages.Count,
+        listPages
+    });
+});
+
+
+app.MapGet("/api/documents/sample/chunks", (
+     PdfTextExtractor objExtractor,
+     TextChunker objChunker,
+    IWebHostEnvironment environment) =>
+{
+    string strFileName = "pip2-form-and-information-booklet.pdf";
+
+    var strFilePath = Path.Combine(
+        environment.ContentRootPath,
+        "DocumentsToRead",
+        strFileName);
+
+    if (!File.Exists(strFilePath))
+    {
+        return Results.NotFound("Sample PDF not found.");
+    }
+
+
+    var lstPages = objExtractor.ExtractPages(strFilePath);
+    var lstChunks = objChunker.ChunkPages(lstPages);
+
+    return Results.Ok(new
+    {
+        document = strFileName,
+        chunkCount = lstChunks.Count,
+        lstChunks
+    });
+});
+
+
 
 app.Run();
