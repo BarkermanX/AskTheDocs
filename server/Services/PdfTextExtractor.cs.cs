@@ -1,6 +1,7 @@
 ﻿
 using System.Text;
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using AskTheDocs.Api.Models;
 
 namespace AskTheDocs.Services;
@@ -14,7 +15,8 @@ public class PdfTextExtractor
 
         foreach (var objPage in objDocument.GetPages())
         {
-            strBuilderText.AppendLine(objPage.Text);
+            strBuilderText.AppendLine(
+                ContentOrderTextExtractor.GetText(objPage));
         }
 
         return strBuilderText.ToString();
@@ -28,12 +30,13 @@ public class PdfTextExtractor
 
         foreach (var page in document.GetPages())
         {
+            string strText = ContentOrderTextExtractor.GetText(page);
+
             pages.Add(new ExtractedPage(
                 page.Number,
-                page.Text));
+                strText));
         }
 
         return pages;
     }
-
 }

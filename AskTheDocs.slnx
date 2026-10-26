@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="AskTheDocs.Tests/AskTheDocs.Tests.csproj" Id="0c24e7e0-491e-4b3e-933e-56180707cd8e" />
   <Project Path="server/AskTheDocs.Api.csproj" />
 </Solution>

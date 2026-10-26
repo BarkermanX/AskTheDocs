@@ -32,10 +32,8 @@ public class TextChunker
             foreach (var strParagraph in arrParagraphs)
             {
                 // Join lines that were wrapped by PDF extraction.
-                string srtCleanedParagraph = Regex.Replace(
-                    strParagraph,
-                    @"\s*\r?\n\s*",
-                    " ").Trim();
+                string srtCleanedParagraph = strParagraph.Trim();
+
 
                 if (srtCleanedParagraph.Length == 0)
                     continue;
