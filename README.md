@@ -1,6 +1,6 @@
 # AskTheDocs
 
-AskTheDocs is a document Q&A application built for reviewing and answering questions about Personal Independence Payment (PIP) guidance documents. It uses a retrieval-augmented generation (RAG) pipeline to search PDF source material, expand the user query, and return grounded answers with supporting source passages.
+AskTheDocs is a full-stack learning project: a document Q&A prototype for exploring retrieval-augmented generation (RAG). It currently works with a small, built-in set of UK Government Personal Independence Payment (PIP) PDFs. Users can ask questions in plain English and see an AI-generated answer alongside the source passages used to produce it.
 
 The application combines:
 - A .NET 10 ASP.NET Core API for indexing and answer generation
@@ -11,19 +11,19 @@ The application combines:
 
 ## Features
 
-- Upload and index PDF guidance documents from the built-in document set
+- Index the built-in PDF guidance documents
 - Convert PDF pages into searchable text chunks
 - Generate embeddings for semantic retrieval
-- Expand user questions to improve recall
+- Expand user questions into alternative searches to improve retrieval
 - Return answers grounded in relevant document passages
-- Surface document/page source references alongside each answer
+- Show supporting passages with document names and page numbers
 - Provide a simple interface for asking questions such as address and eligibility queries
 
 ## Project overview
 
-This repo contains a full-stack prototype for a PIP information assistant. The backend indexes a curated set of UK Government PIP documents and answers questions using retrieval over those documents rather than relying on generic model knowledge alone.
+The project explores how document ingestion, embeddings, vector search and language-model generation fit together. It is a local prototype, not an official service or a substitute for advice. Answers can be incomplete or incorrect, so users should check the cited source documents.
 
-The frontend is intentionally lightweight and designed to be easy to run locally for testing and demos.
+The frontend is intentionally lightweight and designed for local testing and demos. The current indexing endpoint processes the PDFs included in `server/DocumentsToRead/`; it does not provide a general-purpose document upload flow.
 
 ## Repository structure
 
@@ -53,10 +53,42 @@ AskTheDocs/
 
 - Frontend: React 19, Vite, TypeScript
 - Backend: ASP.NET Core (.NET 10)
-- AI / embeddings: Ollama
+- AI / embeddings and answer generation: Ollama, using the configured local models
 - Vector database: Qdrant
 - PDF parsing: PdfPig
 - Testing: xUnit
+
+## How the components fit together
+
+### Indexing documents
+
+1. The API reads each built-in PDF and extracts its text page by page with PdfPig.
+2. The text is split into chunks, retaining the source page number.
+3. Ollama generates an embedding for each chunk.
+4. The API stores each chunk's text, document name, page number and embedding in Qdrant.
+
+### Asking a question
+
+1. The React app sends the question to the ASP.NET Core API.
+2. The API embeds the original question and searches Qdrant for relevant passages.
+3. Ollama generates alternative query phrasings using the initial search results as context. The API embeds and searches those queries too, then deduplicates and ranks the combined results.
+4. The API sends the question and retrieved passages to Ollama to generate an answer grounded in the supplied text.
+5. The response includes the answer and source passages. Citations identify both the document and page, since page numbers alone are ambiguous across multiple PDFs.
+
+For questions asking for an address, the API also tries a deterministic extraction from the retrieved passages and document's last page, rather than relying only on the language model to reproduce the address.
+
+## What this project explores
+
+Building the prototype highlighted that RAG quality depends on the whole pipeline, not just the language model:
+
+- PDF text extraction and chunk boundaries affect what information can be found.
+- Embeddings and vector search retrieve semantically related passages, but relevance still needs to be checked.
+- Query expansion can add useful search variations, but those results still need deduplication and grounding in the source text.
+- Prompts encourage grounded answers and citations, but do not guarantee correctness; source passages need to remain visible and verifiable.
+- Citations need enough detail to locate the source unambiguously, including both document name and page.
+- Exact structured information, such as a postal address, may benefit from deterministic extraction.
+
+The existing xUnit tests cover individual services and pipeline building blocks. They do not constitute a complete evaluation of retrieval relevance or factual answer quality; building a representative evaluation set is a useful next step.
 
 ## Prerequisites
 
@@ -159,7 +191,7 @@ Then open the local Vite URL in your browser.
 
 ## Using the app
 
-Once the backend is running and the documents have been indexed, you can ask questions such as:
+Start the backend and frontend, then index the built-in documents by calling `POST /api/documents/index`. Once indexing completes, you can ask questions such as:
 
 - Where should I send my completed PIP form?
 - What evidence is needed for a PIP claim?
@@ -214,7 +246,8 @@ The backend uses the PDFs in `server/DocumentsToRead/` for indexing. These are e
 
 ## Notes
 
-- The API expects a Qdrant collection to exist and will create it automatically if it does not.
+- The API creates the configured Qdrant collection if it does not already exist. Qdrant must be available when indexing and asking questions.
+- Indexing uses the fixed set of PDFs in `server/DocumentsToRead/`; adding support for arbitrary uploads and persisted document management is not part of this prototype.
 - The app is designed for local research or demo use rather than production deployment.
 - For best results, keep Ollama and Qdrant running while using the application.
 
@@ -224,10 +257,9 @@ This project does not currently declare a license file. Add a license before pub
 
 ## Contributing
 
-If you want to extend the application, consider:
+Possible next steps include:
 
-- adding new document sources
-- improving query expansion or reranking
-- adding authentication or secure deployments
-- introducing a proper persisted document upload flow
-
+- evaluating retrieval and answer quality against a representative question set
+- improving chunking, query expansion or reranking
+- adding document upload and persisted document management
+- adding authentication and production-ready deployment safeguards
