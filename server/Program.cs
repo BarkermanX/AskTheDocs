@@ -92,15 +92,22 @@ var qdrantClient = app.Services.GetRequiredService<QdrantClient>();
 var collectionName = app.Configuration["Qdrant:CollectionName"]!;
 var vectorSize = app.Configuration.GetValue<int>("Qdrant:VectorSize");
 
-if (!await qdrantClient.CollectionExistsAsync(collectionName))
+try
 {
-    await qdrantClient.CreateCollectionAsync(
-        collectionName,
-        new VectorParams
-        {
-            Size = (ulong)vectorSize,
-            Distance = Distance.Cosine
-        });
+    if (!await qdrantClient.CollectionExistsAsync(collectionName))
+    {
+        await qdrantClient.CreateCollectionAsync(
+            collectionName,
+            new VectorParams
+            {
+                Size = (ulong)vectorSize,
+                Distance = Distance.Cosine
+            });
+    }
+}
+catch (Grpc.Core.RpcException ex)
+{
+    Console.WriteLine($"Qdrant is unavailable: {ex.Status.Detail}");
 }
 
 // Configure the HTTP request pipeline

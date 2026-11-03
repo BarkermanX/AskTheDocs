@@ -147,7 +147,7 @@ public class QuestionsController : ControllerBase
                     {
                         question,
                         answer = address.Address +
-                            $" [Page {address.PageNumber}]",
+                            $" [{address.DocumentId}, Page {address.PageNumber}]",
                         sources = new[]
                         {
                     new
@@ -166,7 +166,9 @@ public class QuestionsController : ControllerBase
             string context = string.Join(
                 "\n\n",
                 relevantChunks.Select((result, index) =>
-                    $"Passage {index + 1} (page {result.Chunk.PageNumber}):\n" +
+                    $"Passage {index + 1} " +
+                    $"(document: {result.Chunk.DocumentId}, " +
+                    $"page: {result.Chunk.PageNumber}):\n" +
                     result.Chunk.Text));
 
             string answer = await _answerGenerationService.GenerateAnswerAsync(

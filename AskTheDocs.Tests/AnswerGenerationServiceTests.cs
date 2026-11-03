@@ -18,7 +18,7 @@ public class AnswerGenerationServiceTests
             {
                 "message": {
                     "role": "assistant",
-                    "content": "The policy provides 28 days of leave. [Page 3]"
+                    "content": "The policy provides 28 days of leave. [leave-policy.pdf, Page 3]"
                 },
                 "done": true
             }
@@ -36,11 +36,11 @@ public class AnswerGenerationServiceTests
         // Act
         string result = await service.GenerateAnswerAsync(
             "How much leave is provided?",
-            "The policy provides 28 days of leave. [Page 3]");
+            "The policy provides 28 days of leave. [leave-policy.pdf, Page 3]");
 
         // Assert
         Assert.Equal(
-            "The policy provides 28 days of leave. [Page 3]",
+            "The policy provides 28 days of leave. [leave-policy.pdf, Page 3]",
             result);
     }
 
